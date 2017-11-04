@@ -145,11 +145,7 @@ CREATE TABLE tempoid as SELECT oid,col1,a FROM dml_heap_r ORDER BY 1;
 
 SELECT SUM(dml_heap_r.a) FROM dml_heap_p, dml_heap_r WHERE dml_heap_r.b = dml_heap_p.a;
 
--- FIXME: This currently trips an assertion, see
--- https://github.com/greenplum-db/gpdb/issues/3611
--- Re-enable once that's fixed!
-
---UPDATE dml_heap_r SET a = dml_heap_r.a FROM dml_heap_p WHERE dml_heap_r.b = dml_heap_p.a;
+UPDATE dml_heap_r SET a = dml_heap_r.a FROM dml_heap_p WHERE dml_heap_r.b = dml_heap_p.a;
 
 -- The query checks that the tuple oids remain the remain pre and post update .
 -- SELECT COUNT(*) FROM tempoid, dml_heap_r WHERE tempoid.oid = dml_heap_r.oid AND tempoid.col1 = dml_heap_r.col1 is a join on the tuple oids before update and after update. If the oids remain the same the below query should return 1 row which is equivalent to the number of rows in the table
@@ -158,3 +154,11 @@ SELECT * FROM ( (SELECT COUNT(*) FROM dml_heap_r) UNION (SELECT COUNT(*) FROM te
 SELECT SUM(a) FROM dml_heap_r;
 
 
+--
+-- Check that a tuple gets an OID, even if it's toasted (there used to
+-- be a bug, where toasting a tuple cleared its just-assigned OID)
+--
+INSERT INTO dml_ao (a, b, c) VALUES (10, 1, repeat('x', 50000));
+INSERT INTO dml_ao (a, b, c) VALUES (10, 2, repeat('x', 50000));
+
+SELECT COUNT(distinct oid) FROM dml_ao where a = 10;
